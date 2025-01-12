@@ -170,6 +170,7 @@ module "tls_keygen_iam" {
   policy                 = "tls_cert"
   external_s3_bucket_arn = module.external_s3.s3_bucket_arn
   internal_s3_bucket_arn = module.internal_s3.s3_bucket_arn
+  sns_topic_arn          = module.sns_ca_notifications.sns_topic_arn
 }
 
 module "create_rsa_root_ca_lambda" {
@@ -190,6 +191,7 @@ module "create_rsa_root_ca_lambda" {
   domain                          = var.hosted_zone_domain
   runtime                         = var.runtime
   public_crl                      = var.public_crl
+  sns_topic_arn                   = module.sns_ca_notifications.sns_topic_arn
 }
 
 module "create_rsa_issuing_ca_lambda" {
@@ -210,6 +212,7 @@ module "create_rsa_issuing_ca_lambda" {
   domain                          = var.hosted_zone_domain
   runtime                         = var.runtime
   public_crl                      = var.public_crl
+  sns_topic_arn                   = module.sns_ca_notifications.sns_topic_arn
 }
 
 module "rsa_root_ca_crl_lambda" {
@@ -232,6 +235,7 @@ module "rsa_root_ca_crl_lambda" {
   domain                          = var.hosted_zone_domain
   runtime                         = var.runtime
   public_crl                      = var.public_crl
+  sns_topic_arn                   = module.sns_ca_notifications.sns_topic_arn
 }
 
 module "rsa_issuing_ca_crl_lambda" {
@@ -254,6 +258,7 @@ module "rsa_issuing_ca_crl_lambda" {
   domain                          = var.hosted_zone_domain
   runtime                         = var.runtime
   public_crl                      = var.public_crl
+  sns_topic_arn                   = module.sns_ca_notifications.sns_topic_arn
 }
 
 module "rsa_tls_cert_lambda" {
@@ -276,6 +281,7 @@ module "rsa_tls_cert_lambda" {
   public_crl                      = var.public_crl
   max_cert_lifetime               = var.max_cert_lifetime
   allowed_invocation_principals   = var.aws_principals
+  sns_topic_arn                   = module.sns_ca_notifications.sns_topic_arn
 }
 
 module "cloudfront_certificate" {
@@ -368,4 +374,18 @@ module "db-reader-role" {
   ddb_table_arn      = module.dynamodb.ddb_table_arn
   policy             = "db_reader"
   assume_role_policy = "db_reader"
+}
+
+module "sns_ca_notifications" {
+  source = "./modules/terraform-aws-ca-sns"
+
+  project                       = var.project
+  function                      = "ca-notifications"
+  env                           = var.env
+  custom_sns_topic_display_name = var.custom_sns_topic_display_name
+  custom_sns_topic_name         = var.custom_sns_topic_name
+  kms_key_arn                   = coalesce(var.kms_arn_resource, module.kms_tls_keygen.kms_arn)
+  email_subscriptions           = var.sns_email_subscriptions
+  lambda_subscriptions          = var.sns_lambda_subscriptions
+  sqs_subscriptions             = var.sns_sqs_subscriptions
 }

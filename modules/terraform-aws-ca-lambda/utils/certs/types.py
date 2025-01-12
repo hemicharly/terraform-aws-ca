@@ -81,8 +81,17 @@ def filter_and_validate_sans(common_name: str, sans: list[str]) -> list[str]:
     if (_sans is None or _sans == []) and valid_common_name:
         _sans = [common_name]
 
+    # log invalid SANs
+    for san in _sans:
+        # allow wildcard SANs provided base domain is valid
+        if san.split(".")[0] == "*" and domain_validator(san[2:]):
+            continue
+        # log invalid SANs
+        if not domain_validator(san):
+            print(f"Invalid domain {san} excluded from SANs")
+
     # remove invalid SANs
-    _sans = [s for s in _sans if domain_validator(s)]
+    _sans = [s for s in _sans if domain_validator(s) or s.split(".")[0] == "*" and domain_validator(s[2:])]
 
     return _sans
 
@@ -99,7 +108,7 @@ class CsrInfo:
     _purposes: list[str] = field(init=False, repr=False)
 
     @property
-    def sans(self) -> list[str]:
+    def sans(self) -> list[str]:  # noqa: F811
         if isinstance(self._sans, list):
             return filter_and_validate_sans(self.subject.common_name, self._sans)
 
@@ -110,7 +119,7 @@ class CsrInfo:
         self._sans = _sans
 
     @property
-    def purposes(self) -> list[str]:
+    def purposes(self) -> list[str]:  # noqa: F811
         if isinstance(self._purposes, list):
             return filter_and_validate_purposes(self._purposes)
         return ["client_auth"]
